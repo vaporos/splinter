@@ -12,22 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[workspace]
+[package]
+name = "connman"
+version = "0.1.0"
+authors = ["Cargill Incorporated"]
+edition = "2018"
 
-members = [
-    "cli",
-    "client",
-    "libsplinter",
-    "splinterd",
-    "examples/connman/",
-    "examples/cm-repl/cli",
-    "examples/cm-repl/daemon",
-    "examples/private_counter/cli",
-    "examples/private_counter/service",
-    "examples/private_xo",
-    "examples/gameroom/cli",
-    "examples/gameroom/database",
-    "examples/gameroom/daemon",
-    "services/health",
-    "services/scabbard",
-]
+[dependencies]
+ctrlc = "3"
+rustyline = "6"
+splinter = { path = "../../libsplinter", features = ["connection-manager", "matrix"]}
