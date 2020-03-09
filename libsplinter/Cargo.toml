@@ -40,7 +40,7 @@ crossbeam-channel = "0.3"
 diesel = { version = "1.0", features = ["r2d2", "serde_json"], optional = true }
 diesel_migrations = { version = "1.4", optional = true }
 futures = { version = "0.1", optional = true }
-hyper = { version = "0.12", optional = true }
+hyper = { version = "0.13", optional = true }
 jsonwebtoken = { version = "6.0", optional = true }
 log = "0.3.0"
 mio = "0.6"
@@ -58,7 +58,7 @@ serde_derive = "1.0"
 serde_json = "1.0"
 serde_yaml = "0.8"
 tar = { version = "0.4", optional = true }
-tokio = { version = "0.1.22", optional = true }
+tokio = { version = "0.2.0", optional = true }
 transact = { version = "0.2", features = ["sawtooth-compat"] }
 url = "1.7.1"
 ursa = { version = "0.1", optional = true }
@@ -118,6 +118,7 @@ connection-manager = ["matrix"]
 connection-manager-notification-iter-try-next = ["connection-manager"]
 database = ["diesel/postgres", "diesel_migrations"]
 events = ["actix-http", "futures", "hyper", "tokio", "awc"]
+http-transport = ["hyper", "tokio"]
 matrix = []
 node-registry-unified = []
 postgres = ["diesel/postgres"]
