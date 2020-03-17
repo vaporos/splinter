@@ -14,6 +14,8 @@
 
 mod frame;
 pub mod inproc;
+#[cfg(feature = "http-transport")]
+pub mod http;
 pub mod multi;
 pub mod raw;
 pub mod tls;

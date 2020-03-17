@@ -96,6 +96,7 @@ experimental = [
     "connection-manager",
     "connection-manager-notification-iter-try-next",
     "database",
+    "http-transport",
     "json-web-tokens",
     "matrix",
     "node-registry-unified",
@@ -120,6 +121,7 @@ connection-manager = ["matrix"]
 connection-manager-notification-iter-try-next = ["connection-manager"]
 database = ["diesel_migrations", "postgres"]
 events = ["actix-http", "futures", "hyper", "tokio", "awc"]
+http-transport = ["hyper", "tokio"]
 json-web-tokens = ["jsonwebtoken"]
 matrix = []
 node-registry-unified = []
