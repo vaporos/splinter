@@ -67,7 +67,8 @@ experimental = [
     "proposal-read",
     "rest-api-cors",
     "scabbard-get-state",
-    "service-arg-validation"
+    "service-arg-validation",
+    "ws-transport",
 ]
 
 biome = ["splinter/biome", "database"]
@@ -85,6 +86,7 @@ json-web-tokens = ["splinter/json-web-tokens"]
 rest-api-cors = ["splinter/rest-api-cors"]
 scabbard-get-state = ["splinter/scabbard-get-state"]
 service-arg-validation = ["splinter/service-arg-validation"]
+ws-transport = ["splinter/ws-transport"]
 
 [package.metadata.deb]
 maintainer = "The Splinter Team"
