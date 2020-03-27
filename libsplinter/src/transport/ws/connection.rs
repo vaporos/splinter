@@ -17,10 +17,12 @@ use std::thread;
 use std::time::Duration;
 
 use mio::{net::TcpStream as MioTcpStream, Evented};
-use websocket::client::sync::Client;
-use websocket::message::{Message, OwnedMessage::Binary};
-use websocket::result::WebSocketError;
-use websocket::stream::sync::{AsTcpStream, Stream};
+use websocket::{
+    client::sync::Client,
+    message::{Message, OwnedMessage::Binary},
+    result::WebSocketError,
+    stream::sync::{AsTcpStream, Stream},
+};
 
 use crate::transport::{Connection, DisconnectError, RecvError, SendError};
 
@@ -30,14 +32,26 @@ where
 {
     client: Client<S>,
     mio_stream: MioTcpStream,
+    remote_endpoint: String,
+    local_endpoint: String,
 }
 
 impl<S> WsClientConnection<S>
 where
     S: Read + Write + Send,
 {
-    pub fn new(client: Client<S>, mio_stream: MioTcpStream) -> Self {
-        WsClientConnection { client, mio_stream }
+    pub fn new(
+        client: Client<S>,
+        mio_stream: MioTcpStream,
+        remote_endpoint: String,
+        local_endpoint: String,
+    ) -> Self {
+        WsClientConnection {
+            client,
+            mio_stream,
+            remote_endpoint,
+            local_endpoint,
+        }
     }
 }
 
@@ -54,7 +68,13 @@ where
             match self.client.recv_message() {
                 Ok(message) => match message {
                     Binary(v) => break Ok(v),
-                    _ => unimplemented!(),
+                    _ => {
+                        break Err(RecvError::ProtocolError(
+                            "message received was not
+                            websocket::message::OwnedMessage::Binary"
+                                .to_string(),
+                        ))
+                    }
                 },
                 Err(WebSocketError::IoError(ref e)) if e.kind() == io::ErrorKind::WouldBlock => {
                     thread::sleep(Duration::from_millis(100));
@@ -70,11 +90,11 @@ where
     }
 
     fn remote_endpoint(&self) -> String {
-        format!("ws://{}", self.client.peer_addr().unwrap())
+        self.remote_endpoint.clone()
     }
 
     fn local_endpoint(&self) -> String {
-        format!("ws://{}", self.client.local_addr().unwrap())
+        self.local_endpoint.clone()
     }
 
     fn disconnect(&mut self) -> Result<(), DisconnectError> {

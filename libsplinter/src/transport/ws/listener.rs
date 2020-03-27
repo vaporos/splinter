@@ -15,22 +15,26 @@
 use std::net::TcpStream;
 
 use mio::net::TcpStream as MioTcpStream;
-use websocket::server::sync::Server;
-use websocket::server::upgrade::sync::Buffer;
-use websocket::server::{InvalidConnection, NoTlsAcceptor};
-use websocket::stream::sync::AsTcpStream as _;
+use websocket::{
+    server::{sync::Server, upgrade::sync::Buffer, InvalidConnection, NoTlsAcceptor},
+    stream::sync::AsTcpStream as _,
+};
 
 use crate::transport::{AcceptError, Connection, Listener};
 
 use super::connection::WsClientConnection;
 
-pub struct WsListener {
+pub(super) struct WsListener {
     server: Server<NoTlsAcceptor>,
+    local_endpoint: String,
 }
 
 impl WsListener {
-    pub fn new(server: Server<NoTlsAcceptor>) -> Self {
-        WsListener { server }
+    pub fn new(server: Server<NoTlsAcceptor>, local_endpoint: String) -> Self {
+        WsListener {
+            server,
+            local_endpoint,
+        }
     }
 }
 
@@ -39,14 +43,21 @@ impl Listener for WsListener {
         let client = self.server.accept()?.accept()?;
 
         let stream_ref = client.stream_ref();
-        let stream_clone = stream_ref.as_tcp().try_clone().unwrap();
-        let mio_stream = MioTcpStream::from_stream(stream_clone).unwrap();
+        let stream_clone = stream_ref.as_tcp().try_clone()?;
+        let mio_stream = MioTcpStream::from_stream(stream_clone)?;
+        let remote_endpoint = format!("ws://{}", client.peer_addr()?);
+        let local_endpoint = format!("ws://{}", client.local_addr()?);
 
-        Ok(Box::new(WsClientConnection::new(client, mio_stream)))
+        Ok(Box::new(WsClientConnection::new(
+            client,
+            mio_stream,
+            remote_endpoint,
+            local_endpoint,
+        )))
     }
 
     fn endpoint(&self) -> String {
-        format!("ws://{}", self.server.local_addr().unwrap())
+        self.local_endpoint.clone()
     }
 }
 

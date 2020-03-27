@@ -13,10 +13,12 @@
 // limitations under the License.
 
 use mio::net::TcpStream as MioTcpStream;
-use websocket::result::WebSocketError;
-use websocket::server::sync::Server;
-use websocket::stream::sync::AsTcpStream as _;
-use websocket::{server::NoTlsAcceptor, ClientBuilder};
+use websocket::{
+    result::WebSocketError,
+    server::{sync::Server, NoTlsAcceptor},
+    stream::sync::AsTcpStream as _,
+    ClientBuilder,
+};
 
 use crate::transport::{ConnectError, Connection, ListenError, Listener, Transport};
 
@@ -82,6 +84,7 @@ const PROTOCOL_PREFIX: &str = "ws://";
 ///
 ///     Ok(())
 /// }
+/// ```
 #[derive(Default)]
 pub struct WsTransport {}
 
@@ -101,10 +104,17 @@ impl Transport for WsTransport {
         let client = ClientBuilder::new(endpoint)?.connect_insecure()?;
 
         let stream_ref = client.stream_ref();
-        let stream_clone = stream_ref.as_tcp().try_clone().unwrap();
-        let mio_stream = MioTcpStream::from_stream(stream_clone).unwrap();
+        let stream_clone = stream_ref.as_tcp().try_clone()?;
+        let mio_stream = MioTcpStream::from_stream(stream_clone)?;
+        let remote_endpoint = format!("ws://{}", client.peer_addr()?);
+        let local_endpoint = format!("ws://{}", client.local_addr()?);
 
-        Ok(Box::new(WsClientConnection::new(client, mio_stream)))
+        Ok(Box::new(WsClientConnection::new(
+            client,
+            mio_stream,
+            remote_endpoint,
+            local_endpoint,
+        )))
     }
 
     fn listen(&mut self, bind: &str) -> Result<Box<dyn Listener>, ListenError> {
@@ -122,8 +132,9 @@ impl Transport for WsTransport {
         };
 
         let server: Server<NoTlsAcceptor> = Server::bind(address)?;
+        let local_endpoint = format!("ws://{}", server.local_addr()?);
 
-        Ok(Box::new(WsListener::new(server)))
+        Ok(Box::new(WsListener::new(server, local_endpoint)))
     }
 }
 
