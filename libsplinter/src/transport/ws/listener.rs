@@ -14,11 +14,7 @@
 
 use std::net::TcpStream;
 
-use mio::net::TcpStream as MioTcpStream;
-use websocket::{
-    server::{sync::Server, upgrade::sync::Buffer, InvalidConnection, NoTlsAcceptor},
-    stream::sync::AsTcpStream as _,
-};
+use websocket::server::{sync::Server, upgrade::sync::Buffer, InvalidConnection, NoTlsAcceptor};
 
 use crate::transport::{AcceptError, Connection, Listener};
 
@@ -42,15 +38,11 @@ impl Listener for WsListener {
     fn accept(&mut self) -> Result<Box<dyn Connection>, AcceptError> {
         let client = self.server.accept()?.accept()?;
 
-        let stream_ref = client.stream_ref();
-        let stream_clone = stream_ref.as_tcp().try_clone()?;
-        let mio_stream = MioTcpStream::from_stream(stream_clone)?;
         let remote_endpoint = format!("ws://{}", client.peer_addr()?);
         let local_endpoint = format!("ws://{}", client.local_addr()?);
 
         Ok(Box::new(WsClientConnection::new(
             client,
-            mio_stream,
             remote_endpoint,
             local_endpoint,
         )))

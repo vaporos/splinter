@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use mio::net::TcpStream as MioTcpStream;
 use websocket::{
     result::WebSocketError,
     server::{sync::Server, NoTlsAcceptor},
-    stream::sync::AsTcpStream as _,
     ClientBuilder,
 };
 
@@ -103,15 +101,11 @@ impl Transport for WsTransport {
 
         let client = ClientBuilder::new(endpoint)?.connect_insecure()?;
 
-        let stream_ref = client.stream_ref();
-        let stream_clone = stream_ref.as_tcp().try_clone()?;
-        let mio_stream = MioTcpStream::from_stream(stream_clone)?;
         let remote_endpoint = format!("ws://{}", client.peer_addr()?);
         let local_endpoint = format!("ws://{}", client.local_addr()?);
 
         Ok(Box::new(WsClientConnection::new(
             client,
-            mio_stream,
             remote_endpoint,
             local_endpoint,
         )))

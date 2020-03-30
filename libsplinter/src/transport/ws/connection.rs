@@ -13,10 +13,11 @@
 // limitations under the License.
 
 use std::io::{self, Read, Write};
+use std::os::unix::io::AsRawFd;
 use std::thread;
 use std::time::Duration;
 
-use mio::{net::TcpStream as MioTcpStream, Evented};
+use mio::{unix::EventedFd, Evented, Poll, PollOpt, Ready, Token};
 use websocket::{
     client::sync::Client,
     message::{Message, OwnedMessage::Binary},
@@ -31,7 +32,6 @@ where
     S: Read + Write + Send,
 {
     client: Client<S>,
-    mio_stream: MioTcpStream,
     remote_endpoint: String,
     local_endpoint: String,
 }
@@ -40,15 +40,9 @@ impl<S> WsClientConnection<S>
 where
     S: Read + Write + Send,
 {
-    pub fn new(
-        client: Client<S>,
-        mio_stream: MioTcpStream,
-        remote_endpoint: String,
-        local_endpoint: String,
-    ) -> Self {
+    pub fn new(client: Client<S>, remote_endpoint: String, local_endpoint: String) -> Self {
         WsClientConnection {
             client,
-            mio_stream,
             remote_endpoint,
             local_endpoint,
         }
@@ -102,7 +96,38 @@ where
     }
 
     fn evented(&self) -> &dyn Evented {
-        &self.mio_stream
+        self
+    }
+}
+
+impl<S> Evented for WsClientConnection<S>
+where
+    S: AsTcpStream + Stream + Read + Write + Send,
+{
+    fn register(
+        &self,
+        poll: &Poll,
+        token: Token,
+        interest: Ready,
+        opts: PollOpt,
+    ) -> io::Result<()> {
+        EventedFd(&self.client.stream_ref().as_tcp().as_raw_fd())
+            .register(poll, token, interest, opts)
+    }
+
+    fn reregister(
+        &self,
+        poll: &Poll,
+        token: Token,
+        interest: Ready,
+        opts: PollOpt,
+    ) -> io::Result<()> {
+        EventedFd(&self.client.stream_ref().as_tcp().as_raw_fd())
+            .reregister(poll, token, interest, opts)
+    }
+
+    fn deregister(&self, poll: &Poll) -> io::Result<()> {
+        EventedFd(&self.client.stream_ref().as_tcp().as_raw_fd()).deregister(poll)
     }
 }
 
