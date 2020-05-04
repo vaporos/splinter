@@ -88,75 +88,84 @@ pub(super) const WSS_PROTOCOL_PREFIX: &str = "wss://";
 #[derive(Default)]
 pub struct WsTransport {}
 
+impl WsTransport {
+    pub fn new() -> Self {
+        WsTransport {}
+    }
+
+    pub fn new_tls() -> Self {
+        WsTransport {}
+    }
+}
+
 impl Transport for WsTransport {
     fn accepts(&self, address: &str) -> bool {
         address.starts_with(WS_PROTOCOL_PREFIX) || address.starts_with(WSS_PROTOCOL_PREFIX)
     }
 
     fn connect(&mut self, endpoint: &str) -> Result<Box<dyn Connection>, ConnectError> {
-        if !self.accepts(endpoint) {
-            return Err(ConnectError::ProtocolError(format!(
-                "Invalid protocol \"{}\"",
-                endpoint
-            )));
-        }
+        if endpoint.starts_with(WS_PROTOCOL_PREFIX) {
+            let address = &endpoint[WS_PROTOCOL_PREFIX.len()..];
+            let stream = TcpStream::connect(address)?;
 
-        let address = if endpoint.starts_with(WS_PROTOCOL_PREFIX) {
-            &endpoint[WS_PROTOCOL_PREFIX.len()..]
-        } else {
-            endpoint
-        };
+            let remote_endpoint = format!("{}{}", WS_PROTOCOL_PREFIX, stream.peer_addr()?);
+            let local_endpoint = format!("{}{}", WS_PROTOCOL_PREFIX, stream.local_addr()?);
 
-        let stream = TcpStream::connect(address)?;
+            let mio_stream = MioTcpStream::from_stream(stream)?;
 
-        let remote_endpoint = format!("{}{}", WS_PROTOCOL_PREFIX, stream.peer_addr()?);
-        let local_endpoint = format!("{}{}", WS_PROTOCOL_PREFIX, stream.local_addr()?);
-
-        let mio_stream = MioTcpStream::from_stream(stream)?;
-
-        let (websocket, _) = client(endpoint, mio_stream).map_or_else(
-            {
-                |mut handshake_err| loop {
-                    match handshake_err {
-                        HandshakeError::Interrupted(mid_handshake) => {
-                            thread::sleep(Duration::from_millis(100));
-                            match mid_handshake.handshake() {
-                                Ok(ok) => break Ok(ok),
-                                Err(err) => handshake_err = err,
+            let (websocket, _) = client(endpoint, mio_stream).map_or_else(
+                {
+                    |mut handshake_err| loop {
+                        match handshake_err {
+                            HandshakeError::Interrupted(mid_handshake) => {
+                                thread::sleep(Duration::from_millis(100));
+                                match mid_handshake.handshake() {
+                                    Ok(ok) => break Ok(ok),
+                                    Err(err) => handshake_err = err,
+                                }
                             }
+                            HandshakeError::Failure(err) => break Err(err),
                         }
-                        HandshakeError::Failure(err) => break Err(err),
                     }
-                }
-            },
-            Ok,
-        )?;
+                },
+                Ok,
+            )?;
 
-        Ok(Box::new(WsConnection::new(
-            websocket,
-            remote_endpoint,
-            local_endpoint,
-        )))
+            Ok(Box::new(WsConnection::new(
+                websocket,
+                remote_endpoint,
+                local_endpoint,
+            )))
+        } else if endpoint.starts_with(WSS_PROTOCOL_PREFIX) {
+            let address = &endpoint[WSS_PROTOCOL_PREFIX.len()..];
+            unimplemented!()
+        } else {
+            Err(ConnectError::ProtocolError(format!(
+                "Invalid protocol: {}",
+                endpoint
+            )))
+        }
     }
 
     fn listen(&mut self, bind: &str) -> Result<Box<dyn Listener>, ListenError> {
-        if !self.accepts(bind) {
-            return Err(ListenError::ProtocolError(format!(
-                "Invalid protocol \"{}\"",
-                bind
-            )));
-        }
+        if bind.starts_with(WS_PROTOCOL_PREFIX) {
+            let address = &bind[WS_PROTOCOL_PREFIX.len()..];
+            let tcp_listener = TcpListener::bind(address)?;
+            let local_endpoint = format!("{}{}", WS_PROTOCOL_PREFIX, tcp_listener.local_addr()?);
 
-        let address = if bind.starts_with(WS_PROTOCOL_PREFIX) {
-            &bind[WS_PROTOCOL_PREFIX.len()..]
+            Ok(Box::new(WsListener::new(tcp_listener, local_endpoint)))
+        } else if bind.starts_with(WSS_PROTOCOL_PREFIX) {
+            let address = &bind[WSS_PROTOCOL_PREFIX.len()..];
+            let tcp_listener = TcpListener::bind(address)?;
+            let local_endpoint = format!("{}{}", WSS_PROTOCOL_PREFIX, tcp_listener.local_addr()?);
+
+            unimplemented!()
         } else {
-            bind
-        };
-
-        let tcp_listener = TcpListener::bind(address)?;
-        let local_endpoint = format!("ws://{}", tcp_listener.local_addr()?);
-
-        Ok(Box::new(WsListener::new(tcp_listener, local_endpoint)))
+            Err(ListenError::ProtocolError(format!(
+                "Invalid protocol: {}",
+                bind
+            )))
+        }
     }
 }
 
