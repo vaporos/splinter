@@ -24,7 +24,8 @@ use crate::transport::{ConnectError, Connection, ListenError, Listener, Transpor
 use super::connection::WsConnection;
 use super::listener::WsListener;
 
-pub(super) const PROTOCOL_PREFIX: &str = "ws://";
+pub(super) const WS_PROTOCOL_PREFIX: &str = "ws://";
+pub(super) const WSS_PROTOCOL_PREFIX: &str = "wss://";
 
 /// A WebSocket-based `Transport`.
 ///
@@ -89,7 +90,7 @@ pub struct WsTransport {}
 
 impl Transport for WsTransport {
     fn accepts(&self, address: &str) -> bool {
-        address.starts_with(PROTOCOL_PREFIX)
+        address.starts_with(WS_PROTOCOL_PREFIX) || address.starts_with(WSS_PROTOCOL_PREFIX)
     }
 
     fn connect(&mut self, endpoint: &str) -> Result<Box<dyn Connection>, ConnectError> {
@@ -100,16 +101,16 @@ impl Transport for WsTransport {
             )));
         }
 
-        let address = if endpoint.starts_with(PROTOCOL_PREFIX) {
-            &endpoint[PROTOCOL_PREFIX.len()..]
+        let address = if endpoint.starts_with(WS_PROTOCOL_PREFIX) {
+            &endpoint[WS_PROTOCOL_PREFIX.len()..]
         } else {
             endpoint
         };
 
         let stream = TcpStream::connect(address)?;
 
-        let remote_endpoint = format!("{}{}", PROTOCOL_PREFIX, stream.peer_addr()?);
-        let local_endpoint = format!("{}{}", PROTOCOL_PREFIX, stream.local_addr()?);
+        let remote_endpoint = format!("{}{}", WS_PROTOCOL_PREFIX, stream.peer_addr()?);
+        let local_endpoint = format!("{}{}", WS_PROTOCOL_PREFIX, stream.local_addr()?);
 
         let mio_stream = MioTcpStream::from_stream(stream)?;
 
@@ -146,8 +147,8 @@ impl Transport for WsTransport {
             )));
         }
 
-        let address = if bind.starts_with(PROTOCOL_PREFIX) {
-            &bind[PROTOCOL_PREFIX.len()..]
+        let address = if bind.starts_with(WS_PROTOCOL_PREFIX) {
+            &bind[WS_PROTOCOL_PREFIX.len()..]
         } else {
             bind
         };

@@ -22,7 +22,7 @@ use tungstenite::{accept, handshake::HandshakeError};
 use crate::transport::{AcceptError, Connection, Listener};
 
 use super::connection::WsConnection;
-use super::transport::PROTOCOL_PREFIX;
+use super::transport::WS_PROTOCOL_PREFIX;
 
 pub(super) struct WsListener {
     listener: TcpListener,
@@ -41,8 +41,8 @@ impl WsListener {
 impl Listener for WsListener {
     fn accept(&mut self) -> Result<Box<dyn Connection>, AcceptError> {
         let (stream, _) = self.listener.accept()?;
-        let remote_endpoint = format!("{}{}", PROTOCOL_PREFIX, stream.peer_addr()?);
-        let local_endpoint = format!("{}{}", PROTOCOL_PREFIX, stream.local_addr()?);
+        let remote_endpoint = format!("{}{}", WS_PROTOCOL_PREFIX, stream.peer_addr()?);
+        let local_endpoint = format!("{}{}", WS_PROTOCOL_PREFIX, stream.local_addr()?);
 
         let mio_stream = MioTcpStream::from_stream(stream)?;
         let websocket = accept(mio_stream).map_or_else(
