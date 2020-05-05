@@ -16,9 +16,12 @@ use std::net::{TcpListener, TcpStream};
 use std::thread;
 use std::time::Duration;
 
-use mio::net::TcpStream as MioTcpStream;
+use openssl::error::ErrorStack;
+use openssl::ssl::{SslAcceptor, SslConnector};
+
 use tungstenite::{client, handshake::HandshakeError};
 
+use crate::transport::tls::{build_acceptor, build_connector, TlsConfig};
 use crate::transport::{ConnectError, Connection, ListenError, Listener, Transport};
 
 use super::connection::WsConnection;
@@ -26,6 +29,11 @@ use super::listener::WsListener;
 
 pub(super) const WS_PROTOCOL_PREFIX: &str = "ws://";
 pub(super) const WSS_PROTOCOL_PREFIX: &str = "wss://";
+
+struct TlsInner {
+    acceptor: SslAcceptor,
+    connector: SslConnector,
+}
 
 /// A WebSocket-based `Transport`.
 ///
@@ -40,7 +48,7 @@ pub(super) const WSS_PROTOCOL_PREFIX: &str = "wss://";
 /// use splinter::transport::ws::WsTransport;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let mut transport = WsTransport::default();
+///     let mut transport = WsTransport::new(None);
 ///
 ///     // Connect to a remote endpoint starting wtih `ws://`.
 ///     let mut connection = transport.connect("ws://127.0.0.1:5555")?;
@@ -65,7 +73,7 @@ pub(super) const WSS_PROTOCOL_PREFIX: &str = "wss://";
 /// use splinter::transport::ws::WsTransport;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let mut transport = WsTransport::default();
+///     let mut transport = WsTransport::new(None);
 ///
 ///     // Create a listener, which will bind to the port
 ///     let mut listener = transport.listen("ws://127.0.0.1:5555")?;
@@ -86,15 +94,22 @@ pub(super) const WSS_PROTOCOL_PREFIX: &str = "wss://";
 /// }
 /// ```
 #[derive(Default)]
-pub struct WsTransport {}
+pub struct WsTransport {
+    tls_inner: Option<TlsInner>,
+}
 
 impl WsTransport {
-    pub fn new() -> Self {
-        WsTransport {}
-    }
-
-    pub fn new_tls() -> Self {
-        WsTransport {}
+    pub fn new(config: Option<TlsConfig>) -> Result<Self, WsInitError> {
+        if let Some(conf) = config {
+            Ok(WsTransport {
+                tls_inner: Some(TlsInner {
+                    acceptor: build_acceptor(&conf)?,
+                    connector: build_connector(&conf)?,
+                }),
+            })
+        } else {
+            Ok(WsTransport { tls_inner: None })
+        }
     }
 }
 
@@ -111,9 +126,7 @@ impl Transport for WsTransport {
             let remote_endpoint = format!("{}{}", WS_PROTOCOL_PREFIX, stream.peer_addr()?);
             let local_endpoint = format!("{}{}", WS_PROTOCOL_PREFIX, stream.local_addr()?);
 
-            let mio_stream = MioTcpStream::from_stream(stream)?;
-
-            let (websocket, _) = client(endpoint, mio_stream).map_or_else(
+            let (websocket, _) = client(endpoint, stream).map_or_else(
                 {
                     |mut handshake_err| loop {
                         match handshake_err {
@@ -153,13 +166,19 @@ impl Transport for WsTransport {
             let tcp_listener = TcpListener::bind(address)?;
             let local_endpoint = format!("{}{}", WS_PROTOCOL_PREFIX, tcp_listener.local_addr()?);
 
-            Ok(Box::new(WsListener::new(tcp_listener, local_endpoint)))
+            Ok(Box::new(WsListener::new(tcp_listener, local_endpoint, None)))
         } else if bind.starts_with(WSS_PROTOCOL_PREFIX) {
+            let inner = self.tls_inner.as_ref().ok_or_else(|| {
+                ListenError::ProtocolError(
+                    "TLS support required for the wss:// protocol".to_string(),
+                )
+            })?;
+
             let address = &bind[WSS_PROTOCOL_PREFIX.len()..];
             let tcp_listener = TcpListener::bind(address)?;
             let local_endpoint = format!("{}{}", WSS_PROTOCOL_PREFIX, tcp_listener.local_addr()?);
 
-            unimplemented!()
+            Ok(Box::new(WsListener::new(tcp_listener, local_endpoint, Some(inner.acceptor.clone()))))
         } else {
             Err(ListenError::ProtocolError(format!(
                 "Invalid protocol: {}",
@@ -175,5 +194,26 @@ impl From<tungstenite::error::Error> for ConnectError {
             tungstenite::error::Error::Io(io) => ConnectError::from(io),
             _ => ConnectError::ProtocolError(format!("handshake failure: {}", err)),
         }
+    }
+}
+
+#[derive(Debug)]
+pub enum WsInitError {
+    ProtocolError(String),
+}
+
+impl std::error::Error for WsInitError {}
+
+impl std::fmt::Display for WsInitError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            WsInitError::ProtocolError(msg) => write!(f, "Unable to initialize TLS: {}", msg),
+        }
+    }
+}
+
+impl From<ErrorStack> for WsInitError {
+    fn from(error: ErrorStack) -> Self {
+        WsInitError::ProtocolError(format!("OpenSSL error: {}", error))
     }
 }

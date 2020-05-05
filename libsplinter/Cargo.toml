@@ -57,7 +57,7 @@ serde_derive = "1.0"
 serde_json = "1.0"
 serde_yaml = "0.8"
 tokio = { version = "0.1.22", optional = true }
-transact = { version = "0.2", features = ["sawtooth-compat"] }
+transact = { version = "0.2.4", features = ["sawtooth-compat"] }
 tungstenite = { version = "0.10", optional = true }
 url = "1.7.1"
 ursa = { version = "0.1", optional = true }
@@ -68,7 +68,7 @@ zmq = { version = "0.9", optional = true }
 reqwest = { version = "0.10", features = ["blocking", "json"] }
 serial_test = "0.3"
 tempdir = "0.3"
-transact = { version = "0.2", features = ["family-command", "sawtooth-compat"] }
+transact = { version = "0.2.4", features = ["family-command", "sawtooth-compat"] }
 
 [build-dependencies]
 protoc-rust = "2.14"
