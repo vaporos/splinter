@@ -48,7 +48,7 @@ struct TlsInner {
 /// use splinter::transport::ws::WsTransport;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let mut transport = WsTransport::new(None);
+///     let mut transport = WsTransport::new(None)?;
 ///
 ///     // Connect to a remote endpoint starting wtih `ws://`.
 ///     let mut connection = transport.connect("ws://127.0.0.1:5555")?;
@@ -73,7 +73,7 @@ struct TlsInner {
 /// use splinter::transport::ws::WsTransport;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let mut transport = WsTransport::new(None);
+///     let mut transport = WsTransport::new(None)?;
 ///
 ///     // Create a listener, which will bind to the port
 ///     let mut listener = transport.listen("ws://127.0.0.1:5555")?;
