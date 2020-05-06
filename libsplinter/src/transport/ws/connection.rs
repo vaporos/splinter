@@ -87,7 +87,7 @@ impl<S> Connection for WsConnection<S>
 }
 
 
-pub trait WsAsRawFd {
+pub(super) trait WsAsRawFd {
     fn ws_as_raw_fd(&self) -> RawFd;
 }
 
