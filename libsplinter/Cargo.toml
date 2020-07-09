@@ -49,6 +49,7 @@ percent-encoding = { version = "2.0", optional = true }
 protobuf = "2"
 rand = "0.7"
 reqwest = { version = "0.10", optional = true, features = ["blocking", "json"] }
+r2d2 = { version = "0.8", optional = true }
 sawtooth-sdk = { version = "0.4", optional = true }
 serde = "1.0"
 serde_derive = "1.0"
@@ -97,6 +98,7 @@ experimental = [
     "circuit-template",
     "service-arg-validation",
     "service-network",
+    "sqlite",
     "ws-transport",
     "zmq-transport",
 ]
@@ -108,7 +110,7 @@ biome-notifications = ["biome"]
 biome-user = ["biome"]
 circuit-template = []
 events = ["actix-http", "futures", "hyper", "tokio", "awc"]
-postgres = ["diesel/postgres", "diesel_migrations"]
+postgres = ["diesel/postgres", "diesel_migrations", "r2d2"]
 registry = []
 registry-remote = ["reqwest", "registry"]
 rest-api = [
@@ -125,6 +127,7 @@ rest-api-cors = []
 sawtooth-signing-compat = ["sawtooth-sdk"]
 service-arg-validation = []
 service-network = []
+sqlite = ["diesel/sqlite", "diesel_migrations", "r2d2"]
 ws-transport = ["tungstenite"]
 zmq-transport = ["zmq"]
 

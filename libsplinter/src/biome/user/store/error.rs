@@ -18,6 +18,9 @@ use std::fmt;
 #[cfg(feature = "diesel")]
 use crate::database::error;
 
+#[cfg(feature = "diesel")]
+use r2d2;
+
 /// Represents UserStore errors
 #[derive(Debug)]
 pub enum UserStoreError {
@@ -89,6 +92,13 @@ impl fmt::Display for UserStoreError {
 #[cfg(feature = "diesel")]
 impl From<error::ConnectionError> for UserStoreError {
     fn from(err: error::ConnectionError) -> UserStoreError {
+        UserStoreError::ConnectionError(Box::new(err))
+    }
+}
+
+#[cfg(feature = "diesel")]
+impl From<r2d2::Error> for UserStoreError {
+    fn from(err: r2d2::Error) -> UserStoreError {
         UserStoreError::ConnectionError(Box::new(err))
     }
 }
