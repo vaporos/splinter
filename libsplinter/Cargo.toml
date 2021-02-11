@@ -121,6 +121,7 @@ experimental = [
     "oauth-inflight-request-store-postgres",
     "registry-database",
     "role-based-authorization-store-postgres",
+    "run",
     "service-arg-validation",
     "service-network",
     "shutdown",
@@ -172,6 +173,7 @@ rest-api-actix = ["actix", "actix-http", "actix-web", "actix-web-actors"]
 rest-api-actix-web-3 = ["actix-web-3", "futures-0-3", "actix-0-10", "actix-service-1-0", "https-bind", "shutdown"]
 rest-api-cors = []
 role-based-authorization-store-postgres = ["authorization", "postgres"]
+run = []
 service-arg-validation = []
 service-network = []
 shutdown = []
